@@ -1,90 +1,90 @@
-# Odoo Auto-Installer für Windows 11
+# Odoo Auto-Installer for Windows 11
 
-PowerShell-Skript, das **Odoo 20 (Community)** mit Docker Desktop auf einem Windows-11-Rechner einrichtet – inklusive WSL 2, Docker Desktop, PostgreSQL und einer fertigen Konfiguration.
+PowerShell script that sets up **Odoo 20 (Community)** with Docker Desktop on a Windows 11 computer – including WSL 2, Docker Desktop, PostgreSQL and a ready-to-use configuration.
 
-Aktuelle Version: **2.1 (29.09.2026)**
+Current version: **2.1 (2026-09-29)**
 
-## Voraussetzungen
+## Requirements
 
-| Anforderung | Minimum |
+| Requirement | Minimum |
 | --- | --- |
-| Betriebssystem | Windows 11 64-bit, Version 23H2 oder neuer (Home oder Pro) |
-| Prozessor | x64 (Intel/AMD) oder ARM64 mit aktivierter Hardware-Virtualisierung |
-| Arbeitsspeicher | 8 GB empfohlen |
-| Speicherplatz | 30 GB frei |
-| Rechte | Lokale Administratorrechte |
+| Operating system | Windows 11 64-bit, version 23H2 or newer (Home or Pro) |
+| Processor | x64 (Intel/AMD) or ARM64 with hardware virtualization enabled |
+| Memory | 8 GB recommended |
+| Disk space | 30 GB free |
+| Permissions | Local administrator rights |
 
-## Schnellstart
+## Quick start
 
-1. `install-odoo20.ps1` herunterladen (Datei öffnen → **Download raw file**).
-2. Rechtsklick auf die Datei → **Eigenschaften** → unten **Zulassen** anhaken → OK.
-   (Alternativ in PowerShell: `Unblock-File .\install-odoo20.ps1`)
-3. PowerShell im Download-Ordner öffnen und starten:
+1. Download `install-odoo20.ps1` (open the file → **Download raw file**).
+2. Right-click the file → **Properties** → tick **Unblock** at the bottom → OK.
+   (Alternatively in PowerShell: `Unblock-File .\install-odoo20.ps1`)
+3. Open PowerShell in the download folder and run:
 
    ```powershell
    powershell -ExecutionPolicy Bypass -File .\install-odoo20.ps1
    ```
 
-4. Die Administrator-Abfrage bestätigen, die Zusammenfassung lesen und mit **J** fortfahren.
-5. Am Ende öffnet sich `http://localhost:8069`. Dort mit dem angezeigten Master-Passwort die erste Datenbank anlegen.
-   Beim Feld „Email“ genügt ein beliebiger Login (z. B. `admin`), es muss keine echte Adresse sein.
+4. Confirm the administrator prompt, read the summary and continue with **Y**.
+5. At the end `http://localhost:8069` opens. Create the first database there using the master password shown.
+   The “Email” field only needs a login name (e.g. `admin`); it does not have to be a real address.
 
-Ist ein Neustart nötig (WSL), läuft das Skript nach der nächsten Anmeldung automatisch weiter.
+If a reboot is required (WSL), the script continues automatically after the next sign-in.
 
-## Was das Skript macht
+## What the script does
 
-1. Voraussetzungen prüfen (Windows-Version, Prozessor, Virtualisierung, Speicher, RAM)
-2. WSL 2 aktivieren und aktualisieren
-3. Eine laufende Docker-Engine nutzen – oder Docker Desktop laden, **Signatur von Docker Inc. prüfen** und still installieren
-4. Docker starten, bei Bedarf auf Linux-Container umschalten
-5. `C:\odoo20` mit `compose.yaml` und `odoo.conf` anlegen (zufällige Passwörter)
-6. Odoo 20 + PostgreSQL 16 laden und starten
+1. Checks requirements (Windows version, processor, virtualization, disk space, RAM)
+2. Enables and updates WSL 2
+3. Uses a running Docker engine – or downloads Docker Desktop, **verifies the Docker Inc. signature** and installs it silently
+4. Starts Docker and switches to Linux containers if needed
+5. Creates `C:\odoo20` with `compose.yaml` and `odoo.conf` (random passwords)
+6. Pulls and starts Odoo 20 + PostgreSQL 16
 
-Das Skript kann gefahrlos mehrfach laufen; Erledigtes wird übersprungen, bestehende Dateien bleiben erhalten.
+The script is safe to run multiple times; completed steps are skipped and existing files are kept.
 
-## Optionen
+## Options
 
-| Parameter | Standard | Zweck |
+| Parameter | Default | Purpose |
 | --- | --- | --- |
-| `-OdooVersion` | `20.0` | Image-Tag, z. B. `19.0` |
-| `-Port` | `8069` | Port auf dem Rechner |
-| `-InstallDir` | `C:\odoo20` | Projektordner |
-| `-PostgresVersion` | `16` | PostgreSQL-Version |
-| `-WslMemoryGB` | `8` | RAM-Grenze für WSL; `0` = keine `.wslconfig` anlegen |
-| `-AllowNetworkAccess` | aus | Odoo auch für andere Geräte im Netzwerk freigeben (nicht empfohlen) |
-| `-IgnoreOtherEngines` | aus | Docker Desktop auch installieren, wenn Rancher Desktop/Podman vorhanden ist |
-| `-Force` | aus | `compose.yaml` und `odoo.conf` neu schreiben |
-| `-Yes` | aus | Bestätigungsabfragen überspringen |
+| `-OdooVersion` | `20.0` | Image tag, e.g. `19.0` |
+| `-Port` | `8069` | Port on this computer |
+| `-InstallDir` | `C:\odoo20` | Project folder |
+| `-PostgresVersion` | `16` | PostgreSQL version |
+| `-WslMemoryGB` | `8` | RAM limit for WSL; `0` = do not create `.wslconfig` |
+| `-AllowNetworkAccess` | off | Make Odoo reachable from other devices on the network (not recommended) |
+| `-IgnoreOtherEngines` | off | Install Docker Desktop even if Rancher Desktop/Podman is present |
+| `-Force` | off | Rewrite `compose.yaml` and `odoo.conf` |
+| `-Yes` | off | Skip confirmation prompts |
 
-## Sicherheit
+## Security
 
-- Odoo ist standardmäßig **nur auf dem eigenen Rechner** erreichbar (`127.0.0.1`).
-- Das Skript läuft mit Administratorrechten. Nur aus diesem Repository verwenden.
-- Datenbank- und Master-Passwort werden bei jeder Installation neu erzeugt und stehen in `C:\odoo20\config\odoo.conf`.
+- By default Odoo is reachable **from this computer only** (`127.0.0.1`).
+- The script runs with administrator rights. Only use it from this repository.
+- Database and master passwords are newly generated for each installation and stored in `C:\odoo20\config\odoo.conf`.
 
-## Lizenz von Docker Desktop
+## Docker Desktop license
 
-Mit der Installation wird die Docker-Desktop-Lizenz akzeptiert. Docker Desktop ist kostenlos für Privatnutzung, Ausbildung und Unternehmen mit **weniger als 250 Mitarbeitenden und weniger als 10 Mio. USD Jahresumsatz** – sonst ist ein kostenpflichtiges Docker-Abo nötig.
+The installation accepts the Docker Desktop license. Docker Desktop is free for personal use, education and businesses with **fewer than 250 employees and less than USD 10 million in annual revenue** – otherwise a paid Docker subscription is required.
 Details: https://www.docker.com/legal/docker-subscription-service-agreement/
 
-## Nach der Installation
+## After the installation
 
-| Aufgabe | Befehl (in `C:\odoo20`) |
+| Task | Command (in `C:\odoo20`) |
 | --- | --- |
-| Starten | `docker compose up -d` |
-| Stoppen | `docker compose stop` |
-| Log ansehen | `docker compose logs --tail 20 web` |
-| Update auf neuesten 20.0-Build | `docker compose pull` und `docker compose up -d` |
-| Master-Passwort anzeigen | `Get-Content config\odoo.conf` |
+| Start | `docker compose up -d` |
+| Stop | `docker compose stop` |
+| View log | `docker compose logs --tail 20 web` |
+| Update to the latest 20.0 build | `docker compose pull` and `docker compose up -d` |
+| Show master password | `Get-Content config\odoo.conf` |
 
-Nach einem Neustart des PCs startet Odoo automatisch mit Docker Desktop (ca. 1 Minute warten).
+After a reboot, Odoo starts automatically together with Docker Desktop (wait about one minute).
 
-## Teststand
+## Test status
 
-Version 1 lief erfolgreich auf einem Lenovo ThinkPad L14 (Windows 11 Pro). Die Versionen 2.0 und 2.1 sind syntaktisch geprüft, aber noch nicht auf weiteren Rechnern getestet. Fehler und Rückmeldungen bitte als Issue melden.
+Version 1 ran successfully on a Lenovo ThinkPad L14 (Windows 11 Pro). Versions 2.0 and 2.1 have been syntax-checked but not yet tested on other machines. Please report bugs and feedback as an issue.
 
-## Lizenz
+## License
 
-Dieses Projekt steht unter der [MIT-Lizenz](LICENSE). Du darfst das Skript frei verwenden, verändern und weitergeben, solange der Copyright-Hinweis erhalten bleibt. Es wird ohne jede Gewährleistung bereitgestellt; die Nutzung erfolgt auf eigene Verantwortung.
+This project is licensed under the [MIT License](LICENSE). You may freely use, modify and share the script as long as the copyright notice is kept. It is provided without any warranty; use at your own risk.
 
-Die Lizenz gilt nur für dieses Skript. Docker Desktop, Odoo und PostgreSQL haben ihre eigenen Lizenzen (siehe oben zu Docker Desktop; Odoo Community: LGPL-3.0).
+The license covers this script only. Docker Desktop, Odoo and PostgreSQL have their own licenses (see above for Docker Desktop; Odoo Community: LGPL-3.0).
