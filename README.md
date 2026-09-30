@@ -82,9 +82,3 @@ After a reboot, Odoo starts automatically together with Docker Desktop (wait abo
 ## Test status
 
 Version 1 ran successfully on a Lenovo ThinkPad L14 (Windows 11 Pro). Versions 2.0 and 2.1 have been syntax-checked but not yet tested on other machines. Please report bugs and feedback as an issue.
-
-## License
-
-This project is licensed under the [MIT License](LICENSE). You may freely use, modify and share the script as long as the copyright notice is kept. It is provided without any warranty; use at your own risk.
-
-The license covers this script only. Docker Desktop, Odoo and PostgreSQL have their own licenses (see above for Docker Desktop; Odoo Community: LGPL-3.0).
