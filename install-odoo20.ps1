@@ -1,45 +1,47 @@
-﻿<#
+﻿# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 mngmcom
+<#
 .SYNOPSIS
-    Sets up Odoo 20 (Community) with Docker Desktop on Windows 11.
+    Richtet Odoo 20 (Community) mit Docker Desktop auf Windows 11 ein.
 
 .DESCRIPTION
-    Version 2.1 (2026-09-29) - shareable version for any Windows 11 computer.
-    New in 2.1: uses an already running Docker engine, detects Rancher Desktop /
-    Podman and Docker inside WSL distributions, switches Windows containers to Linux.
+    Version 2.1 (29.09.2026) - teilbare Version fuer beliebige Windows-11-Rechner.
+    Neu in 2.1: nutzt eine bereits laufende Docker-Engine, erkennt Rancher Desktop /
+    Podman und Docker in WSL-Distributionen, schaltet Windows-Container auf Linux um.
 
-    The script works step by step and can be re-run at any time;
-    steps that are already done are detected and skipped.
+    Das Skript arbeitet schrittweise und kann jederzeit erneut gestartet werden;
+    bereits erledigte Schritte werden erkannt und uebersprungen.
 
-      1. Check requirements (Windows 11, x64 or ARM64, virtualization, disk space)
-      2. Enable WSL 2 (restart if needed, then continue automatically)
-      3. Check Docker: use a running engine, otherwise download Docker Desktop,
-         verify its signature and install it silently
-      4. Start Docker Desktop and wait for the engine
-      5. Create the project folder with compose.yaml and odoo.conf (random passwords)
-      6. Pull images, start containers, wait until Odoo responds
+      1. Voraussetzungen pruefen (Windows 11, x64 oder ARM64, Virtualisierung, Speicher)
+      2. WSL 2 aktivieren (bei Bedarf Neustart, danach automatische Fortsetzung)
+      3. Docker pruefen: laufende Engine nutzen, sonst Docker Desktop laden,
+         Signatur pruefen und still installieren
+      4. Docker Desktop starten und auf die Engine warten
+      5. Projektordner mit compose.yaml und odoo.conf anlegen (zufaellige Passwoerter)
+      6. Images laden, Container starten, warten bis Odoo antwortet
 
-    Security:
-      - By default Odoo is ONLY reachable from this computer (127.0.0.1).
-      - The Docker installer is only run if it carries a valid
-        signature from Docker Inc.
-      - Database and master passwords are newly generated for each installation.
+    Sicherheit:
+      - Odoo ist standardmaessig NUR auf diesem Rechner erreichbar (127.0.0.1).
+      - Das Docker-Installationsprogramm wird nur ausgefuehrt, wenn es gueltig
+        von Docker Inc. signiert ist.
+      - Datenbank- und Master-Passwort werden bei jeder Installation neu erzeugt.
 
-    License: The script accepts the Docker Desktop license. Docker Desktop is free
-    for personal use, education and businesses with fewer than 250 employees
-    AND less than USD 10 million annual revenue; otherwise a paid subscription is required.
+    Lizenz: Das Skript akzeptiert die Lizenz von Docker Desktop. Docker Desktop ist
+    kostenlos fuer Privatnutzung, Ausbildung und Unternehmen mit weniger als 250
+    Mitarbeitenden UND weniger als 10 Mio. USD Jahresumsatz, sonst ist ein Abo noetig.
 
-    Not automatable: enabling virtualization in the BIOS/UEFI (if disabled)
-    and creating the first database in the browser.
+    Nicht automatisierbar: die Virtualisierung im BIOS/UEFI einschalten (falls aus)
+    und das Anlegen der ersten Datenbank im Browser.
 
-.PARAMETER InstallDir          Project folder (default: C:\odoo20)
-.PARAMETER OdooVersion         Image tag of odoo (default: 20.0)
-.PARAMETER PostgresVersion     Image tag of postgres (default: 16)
-.PARAMETER Port                Port on this computer (default: 8069)
-.PARAMETER WslMemoryGB         RAM limit for WSL in GB; 0 = do not create .wslconfig (default: 8)
-.PARAMETER AllowNetworkAccess  Make Odoo reachable from other devices on the network (not recommended)
-.PARAMETER Force               Rewrite compose.yaml and odoo.conf even if they exist
-.PARAMETER Yes                 Skip confirmation prompts (default answer: continue)
-.PARAMETER IgnoreOtherEngines  Install Docker Desktop even if Rancher Desktop or Podman is present
+.PARAMETER InstallDir          Projektordner (Standard: C:\odoo20)
+.PARAMETER OdooVersion         Image-Tag von odoo (Standard: 20.0)
+.PARAMETER PostgresVersion     Image-Tag von postgres (Standard: 16)
+.PARAMETER Port                Port auf dem Rechner (Standard: 8069)
+.PARAMETER WslMemoryGB         RAM-Obergrenze fuer WSL in GB; 0 = .wslconfig nicht anlegen (Standard: 8)
+.PARAMETER AllowNetworkAccess  Odoo auch fuer andere Geraete im Netzwerk erreichbar machen (nicht empfohlen)
+.PARAMETER Force               compose.yaml und odoo.conf neu schreiben, auch wenn sie existieren
+.PARAMETER Yes                 Bestaetigungsabfragen ueberspringen (Standardantwort: fortfahren)
+.PARAMETER IgnoreOtherEngines  Docker Desktop auch installieren, wenn Rancher Desktop oder Podman vorhanden ist
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\install-odoo20.ps1
@@ -64,28 +66,28 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ProgressPreference    = 'SilentlyContinue'   # speeds up downloads in PowerShell 5.1
-$env:WSL_UTF8          = '1'                  # otherwise wsl.exe prints UTF-16
+$ProgressPreference    = 'SilentlyContinue'   # beschleunigt Downloads in PowerShell 5.1
+$env:WSL_UTF8          = '1'                  # wsl.exe gibt sonst UTF-16 aus
 
-$ScriptVersion  = '2.1 (2026-09-29)'
-$ResumeTaskName = 'Odoo20-Setup-Resume'
-$RunOnceName    = 'Odoo20SetupResume'
+$ScriptVersion  = '2.1 (29.09.2026)'
+$ResumeTaskName = 'Odoo20-Setup-Fortsetzen'
+$RunOnceName    = 'Odoo20SetupFortsetzen'
 $LicenseUrl     = 'https://www.docker.com/legal/docker-subscription-service-agreement/'
 
-# Docker Desktop may be installed system-wide or (newer versions) per user
+# Docker Desktop kann systemweit oder (neuere Versionen) pro Benutzer installiert sein
 $DockerInstallRoots = @(
     (Join-Path $env:ProgramFiles 'Docker\Docker'),
     (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop')
 )
 
-# ---------------------------------------------------------------- Helper functions
+# ---------------------------------------------------------------- Hilfsfunktionen
 
 function Write-Step([string]$Text) { Write-Host "`n==> $Text" -ForegroundColor Cyan }
 function Write-Ok([string]$Text)   { Write-Host "    [OK] $Text" -ForegroundColor Green }
 function Write-Info([string]$Text) { Write-Host "    $Text" }
 function Write-Warn([string]$Text) { Write-Host "    [!] $Text" -ForegroundColor Yellow }
 function Stop-WithError([string]$Text) {
-    Write-Host "`n[ERROR] $Text" -ForegroundColor Red
+    Write-Host "`n[FEHLER] $Text" -ForegroundColor Red
     exit 1
 }
 
@@ -96,7 +98,7 @@ function Get-DockerRoot {
     return $null
 }
 
-# Run native programs without stderr output aborting the script in PowerShell 5.1
+# Native Programme aufrufen, ohne dass Ausgaben auf stderr in PowerShell 5.1 zum Abbruch fuehren
 function Invoke-Native([string]$File, [string[]]$Arguments) {
     $old = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
@@ -108,7 +110,7 @@ function Invoke-Native([string]$File, [string[]]$Arguments) {
     }
 }
 
-# Arguments for restarting the script (self-elevation, resume after reboot)
+# Argumente fuer einen Neustart des Skripts (Selbst-Erhoehung, Fortsetzung nach Neustart)
 function Get-ScriptArguments([switch]$AddYes) {
     $list = @('-NoExit', '-ExecutionPolicy', 'Bypass', '-File', "`"$PSCommandPath`"")
     foreach ($entry in $script:BoundParams.GetEnumerator()) {
@@ -123,7 +125,7 @@ function Get-ScriptArguments([switch]$AddYes) {
 }
 
 function New-RandomPassword([int]$Length = 24) {
-    # letters and digits only: no trouble with YAML or INI special characters
+    # nur Buchstaben und Ziffern: keine Probleme mit YAML- oder INI-Sonderzeichen
     $chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'
     $bytes = New-Object byte[] $Length
     [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
@@ -131,7 +133,7 @@ function New-RandomPassword([int]$Length = 24) {
 }
 
 function Write-Utf8NoBom([string]$Path, [string]$Content) {
-    # odoo.conf must not have a BOM, otherwise Odoo cannot find the [options] section
+    # odoo.conf darf kein BOM haben, sonst findet Odoo den Abschnitt [options] nicht
     [System.IO.File]::WriteAllText($Path, $Content, (New-Object System.Text.UTF8Encoding $false))
 }
 
@@ -155,16 +157,14 @@ function Get-OsArchitecture {
     try {
         return [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
     } catch {
-        # Fallback for older .NET versions
+        # Fallback fuer aeltere .NET-Versionen
         if ($env:PROCESSOR_ARCHITEW6432) { return $env:PROCESSOR_ARCHITEW6432 }
         return $env:PROCESSOR_ARCHITECTURE
     }
 }
 
-function Test-YesAnswer([string]$Answer) { return ($Answer -match '^[YyJj]') }
-
-# Continue automatically after a reboot: scheduled task first (no UAC prompt),
-# otherwise a RunOnce entry (with UAC prompt), otherwise ask the user to re-run manually.
+# Nach einem Neustart automatisch weitermachen: zuerst geplante Aufgabe (ohne UAC-Abfrage),
+# sonst RunOnce-Eintrag (mit UAC-Abfrage), sonst Hinweis zum manuellen Neustart.
 function Register-Resume {
     $arguments = Get-ScriptArguments -AddYes
     try {
@@ -189,24 +189,24 @@ function Register-Resume {
 $script:BoundParams = $PSBoundParameters
 $script:ConfChanged = $false
 
-# ---------------------------------------------------------------- 0. Admin rights and confirmation
+# ---------------------------------------------------------------- 0. Adminrechte und Bestaetigung
 
 $identity  = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = New-Object Security.Principal.WindowsPrincipal($identity)
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Host 'This script needs administrator rights and will now restart elevated ...' -ForegroundColor Yellow
+    Write-Host 'Das Skript braucht Administratorrechte und startet sich jetzt erhoeht neu ...' -ForegroundColor Yellow
     try {
         Start-Process powershell.exe -Verb RunAs -ArgumentList (Get-ScriptArguments)
     } catch {
-        Stop-WithError 'The administrator prompt was declined. The installation is not possible without admin rights.'
+        Stop-WithError 'Die Administrator-Abfrage wurde abgelehnt. Ohne Adminrechte ist die Installation nicht moeglich.'
     }
     exit 0
 }
 
-# Resuming after reboot: remove the scheduled task / RunOnce entry again
+# Fortsetzung nach Neustart: Aufgabe bzw. RunOnce-Eintrag wieder entfernen
 if (Get-ScheduledTask -TaskName $ResumeTaskName -ErrorAction SilentlyContinue) {
     Unregister-ScheduledTask -TaskName $ResumeTaskName -Confirm:$false
-    Write-Host 'Resuming setup after the reboot.' -ForegroundColor Cyan
+    Write-Host 'Setup wird nach dem Neustart fortgesetzt.' -ForegroundColor Cyan
 }
 Remove-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce' `
                     -Name $RunOnceName -ErrorAction SilentlyContinue
@@ -214,174 +214,174 @@ Remove-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOn
 $bindAddress = if ($AllowNetworkAccess) { '0.0.0.0' } else { '127.0.0.1' }
 
 Write-Host ''
-Write-Host "  Set up Odoo with Docker Desktop  (script version $ScriptVersion)" -ForegroundColor White
-Write-Host "  Odoo $OdooVersion  |  PostgreSQL $PostgresVersion  |  Folder $InstallDir  |  Port $Port"
+Write-Host "  Odoo mit Docker Desktop einrichten  (Skript-Version $ScriptVersion)" -ForegroundColor White
+Write-Host "  Odoo $OdooVersion  |  PostgreSQL $PostgresVersion  |  Ordner $InstallDir  |  Port $Port"
 
 if (-not $Yes) {
     $accessText = if ($AllowNetworkAccess) {
-        "Odoo will also be reachable from OTHER DEVICES ON THE NETWORK (port $Port)."
+        "Odoo wird auch fuer ANDERE GERAETE IM NETZWERK erreichbar sein (Port $Port)."
     } else {
-        "Odoo will only be reachable from this computer (http://localhost:$Port)."
+        "Odoo wird nur auf diesem Rechner erreichbar sein (http://localhost:$Port)."
     }
     Write-Host @"
 
-  With administrator rights, this script will:
-    - enable and update WSL 2 (a reboot may be needed; the script then continues
-      automatically). The update also affects existing Linux distributions.
-    - use a running Docker engine, otherwise install Docker Desktop from docker.com
-    - create the folder $InstallDir and download about 1.5 GB of images
+  Dieses Skript wird mit Administratorrechten:
+    - WSL 2 aktivieren und aktualisieren (eventuell ist ein Neustart noetig; danach geht es
+      automatisch weiter). Das Update betrifft auch bereits vorhandene Linux-Distributionen.
+    - eine laufende Docker-Engine verwenden, sonst Docker Desktop von docker.com installieren
+    - den Ordner $InstallDir anlegen und ca. 1,5 GB Images herunterladen
     - $accessText
 
-  Docker Desktop license (accepted as part of the installation):
-    Free for personal use, education and businesses with fewer than
-    250 employees AND less than USD 10 million annual revenue.
-    Otherwise a paid Docker subscription is required.
+  Docker-Desktop-Lizenz (wird mit der Installation akzeptiert):
+    Kostenlos fuer Privatnutzung, Ausbildung und Unternehmen mit weniger als
+    250 Mitarbeitenden UND weniger als 10 Mio. USD Jahresumsatz.
+    Sonst ist ein kostenpflichtiges Docker-Abo erforderlich.
     Details: $LicenseUrl
 
 "@
-    $answer = Read-Host '  Continue? (Y/N)'
-    if (-not (Test-YesAnswer $answer)) { Write-Host '  Cancelled, nothing was changed.'; exit 0 }
+    $answer = Read-Host '  Fortfahren? (J/N)'
+    if ($answer -notmatch '^[JjYy]') { Write-Host '  Abgebrochen, es wurde nichts veraendert.'; exit 0 }
 }
 
-# ---------------------------------------------------------------- 1. Requirements
+# ---------------------------------------------------------------- 1. Voraussetzungen
 
-Write-Step 'Step 1/6: Checking requirements'
+Write-Step 'Schritt 1/6: Voraussetzungen pruefen'
 
 $build = [Environment]::OSVersion.Version.Build
 if ($build -lt 22000) {
-    Stop-WithError "This script only supports Windows 11 (found: build $build).
-Windows 10 is no longer regularly supported by Microsoft and therefore not by Docker Desktop either."
+    Stop-WithError "Dieses Skript unterstuetzt nur Windows 11 (gefunden: Build $build).
+Windows 10 wird von Microsoft nicht mehr regulaer unterstuetzt und daher auch von Docker Desktop nicht."
 }
-if ($build -lt 22631) { Write-Warn "Windows build $build is old. Please run Windows Update (23H2 or newer recommended)." }
-else { Write-Ok "Windows 11, build $build" }
+if ($build -lt 22631) { Write-Warn "Windows-Build $build ist alt. Bitte Windows Update ausfuehren (23H2 oder neuer empfohlen)." }
+else { Write-Ok "Windows 11, Build $build" }
 
 $osArch = Get-OsArchitecture
 switch -Regex ($osArch) {
-    '^(X64|AMD64)$' { $dockerArch = 'amd64'; Write-Ok 'Processor: x64 (Intel/AMD)' }
+    '^(X64|AMD64)$' { $dockerArch = 'amd64'; Write-Ok 'Prozessor: x64 (Intel/AMD)' }
     '^(Arm64|ARM64)$' {
         $dockerArch = 'arm64'
-        Write-Ok 'Processor: ARM64'
-        Write-Warn 'Docker Desktop for Windows on ARM is not final yet (Early Access). It should work but may have quirks.'
+        Write-Ok 'Prozessor: ARM64'
+        Write-Warn 'Docker Desktop fuer Windows auf ARM ist noch nicht final (Early Access). Es sollte funktionieren, kann aber Eigenheiten haben.'
     }
-    default { Stop-WithError "Unsupported processor architecture: $osArch" }
+    default { Stop-WithError "Nicht unterstuetzte Prozessorarchitektur: $osArch" }
 }
 $DockerInstallerUrl = "https://desktop.docker.com/win/main/$dockerArch/Docker%20Desktop%20Installer.exe"
 
-# Is the script running under a different account than the signed-in user?
+# Laeuft das Skript unter einem anderen Konto als dem angemeldeten Benutzer?
 $sessionUser = (Get-CimInstance Win32_ComputerSystem).UserName
 if ($sessionUser -and ($sessionUser -ne $identity.Name)) {
-    Write-Warn "Signed in is '$sessionUser', but the script runs as '$($identity.Name)'."
-    Write-Warn 'Docker Desktop and the WSL settings will then be set up for the admin account.'
-    Write-Warn 'Better: sign in with an account that has administrator rights itself.'
+    Write-Warn "Angemeldet ist '$sessionUser', das Skript laeuft aber als '$($identity.Name)'."
+    Write-Warn 'Docker Desktop und die WSL-Einstellungen werden dann fuer das Admin-Konto eingerichtet.'
+    Write-Warn 'Besser: sich mit einem Konto anmelden, das selbst Administratorrechte hat.'
     if (-not $Yes) {
-        $answer = Read-Host '    Continue anyway? (Y/N)'
-        if (-not (Test-YesAnswer $answer)) { exit 0 }
+        $answer = Read-Host '    Trotzdem fortfahren? (J/N)'
+        if ($answer -notmatch '^[JjYy]') { exit 0 }
     }
 }
 
 $hypervisor = (Get-CimInstance Win32_ComputerSystem).HypervisorPresent
 $vtFirmware = (Get-CimInstance Win32_Processor | Select-Object -First 1).VirtualizationFirmwareEnabled
 if ($hypervisor -or $vtFirmware) {
-    Write-Ok 'Hardware virtualization is enabled'
+    Write-Ok 'Hardware-Virtualisierung ist aktiv'
 } else {
     Stop-WithError @"
-Hardware virtualization is disabled in the BIOS/UEFI. No script can change that.
+Die Hardware-Virtualisierung ist im BIOS/UEFI ausgeschaltet. Das kann kein Skript aendern.
 
-How to open the BIOS/UEFI (any manufacturer):
-  Settings -> System -> Recovery -> Advanced startup: 'Restart now'
-  -> Troubleshoot -> Advanced options -> UEFI Firmware Settings -> Restart
+So kommst du ins BIOS/UEFI (herstellerunabhaengig):
+  Einstellungen -> System -> Wiederherstellung -> Erweiterter Start: 'Jetzt neu starten'
+  -> Problembehandlung -> Erweiterte Optionen -> UEFI-Firmwareeinstellungen -> Neu starten
 
-Or press the manufacturer's key while the computer starts, e.g.:
-  Lenovo: F1 or F2 (ThinkPads: Enter, then F1)   Dell: F2   HP: Esc, then F10
-  ASUS: F2 or Del   Acer: F2   MSI: Del   Microsoft Surface: hold Volume Up
+Oder beim Einschalten die Taste des Herstellers druecken, z. B.:
+  Lenovo: F1 oder F2 (bei ThinkPads Enter, dann F1)   Dell: F2   HP: Esc, dann F10
+  ASUS: F2 oder Entf   Acer: F2   MSI: Entf   Microsoft Surface: Lauter-Taste halten
 
-Enable the option there. Depending on the manufacturer it is called e.g.
-  'Intel Virtualization Technology', 'Intel VT-x', 'SVM Mode' (AMD) or 'AMD-V'.
-Save, restart and run this script again.
+Dort die Option einschalten. Sie heisst je nach Hersteller z. B.
+  'Intel Virtualization Technology', 'Intel VT-x', 'SVM Mode' (AMD) oder 'AMD-V'.
+Speichern, neu starten und dieses Skript erneut ausfuehren.
 "@
 }
 
 $drive = Get-PSDrive -Name ($InstallDir.Substring(0, 1)) -ErrorAction SilentlyContinue
-if (-not $drive) { Stop-WithError "Drive for '$InstallDir' not found." }
+if (-not $drive) { Stop-WithError "Laufwerk fuer '$InstallDir' nicht gefunden." }
 $freeGB = [math]::Round($drive.Free / 1GB)
-if ($freeGB -lt 30) { Write-Warn "Only $freeGB GB free. At least 30 GB are recommended." }
-else { Write-Ok "$freeGB GB free disk space" }
+if ($freeGB -lt 30) { Write-Warn "Nur $freeGB GB frei. Empfohlen sind mindestens 30 GB." }
+else { Write-Ok "$freeGB GB freier Speicherplatz" }
 
 $ramGB = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB)
-if ($ramGB -lt 8) { Write-Warn "$ramGB GB of RAM. Works, but 8 GB or more are recommended." }
-else { Write-Ok "$ramGB GB of RAM" }
+if ($ramGB -lt 8) { Write-Warn "$ramGB GB Arbeitsspeicher. Funktioniert, empfohlen sind 8 GB oder mehr." }
+else { Write-Ok "$ramGB GB Arbeitsspeicher" }
 
 # ---------------------------------------------------------------- 2. WSL 2
 
-Write-Step 'Step 2/6: Setting up WSL 2'
+Write-Step 'Schritt 2/6: WSL 2 einrichten'
 
 $restartNeeded = $false
 foreach ($feature in 'VirtualMachinePlatform', 'Microsoft-Windows-Subsystem-Linux') {
     $state = (Get-WindowsOptionalFeature -Online -FeatureName $feature).State
     if ($state -eq 'Enabled') {
-        Write-Ok "Windows feature $feature is enabled"
+        Write-Ok "Windows-Feature $feature ist aktiv"
     } else {
-        Write-Info "Enabling Windows feature $feature ..."
+        Write-Info "Aktiviere Windows-Feature $feature ..."
         $result = Enable-WindowsOptionalFeature -Online -FeatureName $feature -All -NoRestart
         if ($result.RestartNeeded) { $restartNeeded = $true }
     }
 }
 
 if ($restartNeeded) {
-    Write-Warn 'WSL 2 requires a reboot.'
+    Write-Warn 'Fuer WSL 2 ist ein Neustart noetig.'
     switch (Register-Resume) {
-        'task'    { Write-Info 'After signing in, the script continues automatically.' }
-        'runonce' { Write-Info 'After signing in, the script starts automatically; please confirm the administrator prompt.' }
-        default   { Write-Warn "Automatic resume is not possible. After the reboot please run the script again:`n    $PSCommandPath" }
+        'task'    { Write-Info 'Nach der Anmeldung laeuft das Skript automatisch weiter.' }
+        'runonce' { Write-Info 'Nach der Anmeldung startet das Skript automatisch; bitte die Administrator-Abfrage bestaetigen.' }
+        default   { Write-Warn "Automatische Fortsetzung nicht moeglich. Nach dem Neustart das Skript bitte erneut starten:`n    $PSCommandPath" }
     }
-    $answer = Read-Host '    Reboot now? (Y/N)'
-    if (Test-YesAnswer $answer) { Restart-Computer -Force }
-    Write-Info 'Please reboot manually later.'
+    $answer = Read-Host '    Jetzt neu starten? (J/N)'
+    if ($answer -match '^[JjYy]') { Restart-Computer -Force }
+    Write-Info 'Bitte spaeter manuell neu starten.'
     exit 0
 }
 
-Write-Info 'Updating WSL (wsl --update) ...'
+Write-Info 'Aktualisiere WSL (wsl --update) ...'
 $update = Invoke-Native 'wsl.exe' @('--update')
-if ($update.ExitCode -ne 0) { Write-Warn "wsl --update reported: $($update.Output)" }
+if ($update.ExitCode -ne 0) { Write-Warn "wsl --update meldete: $($update.Output)" }
 Invoke-Native 'wsl.exe' @('--set-default-version', '2') | Out-Null
 
 $wslVersion = Invoke-Native 'wsl.exe' @('--version')
 if ($wslVersion.Output -match '(\d+)\.(\d+)\.(\d+)') {
     $v = [version]"$($Matches[1]).$($Matches[2]).$($Matches[3])"
-    if ($v -lt [version]'2.1.5') { Stop-WithError "WSL $v is too old (at least 2.1.5 required). Please run 'wsl --update' manually." }
+    if ($v -lt [version]'2.1.5') { Stop-WithError "WSL $v ist zu alt (mindestens 2.1.5). Bitte 'wsl --update' manuell ausfuehren." }
     Write-Ok "WSL $v"
 } else {
-    Stop-WithError "Could not determine the WSL version. Output: $($wslVersion.Output)"
+    Stop-WithError "WSL-Version nicht ermittelbar. Ausgabe: $($wslVersion.Output)"
 }
 
 if ($WslMemoryGB -gt 0) {
     $wslConfig = Join-Path $env:USERPROFILE '.wslconfig'
     if (Test-Path $wslConfig) {
-        Write-Ok '.wslconfig already exists and is left unchanged'
+        Write-Ok '.wslconfig existiert bereits, wird nicht veraendert'
     } else {
         $memGB = [math]::Min($WslMemoryGB, [math]::Max(2, [math]::Floor($ramGB / 2)))
         $cpu   = [math]::Max(2, [math]::Floor([Environment]::ProcessorCount / 2))
         Write-Utf8NoBom $wslConfig "[wsl2]`r`nmemory=${memGB}GB`r`nprocessors=$cpu`r`n"
-        Write-Ok ".wslconfig created (max. $memGB GB RAM, $cpu processors; applies to all WSL distributions)"
+        Write-Ok ".wslconfig angelegt (max. $memGB GB RAM, $cpu Prozessoren; gilt fuer alle WSL-Distributionen)"
     }
 }
 
-# ---------------------------------------------------------------- 3. Check Docker engine / install Docker Desktop
+# ---------------------------------------------------------------- 3. Docker-Engine pruefen / Docker Desktop installieren
 
-Write-Step 'Step 3/6: Checking Docker and installing it if needed'
+Write-Step 'Schritt 3/6: Docker pruefen und bei Bedarf installieren'
 
 Update-SessionPath
 $useExistingEngine = $false
 
 if (Test-DockerEngine) {
-    # Some Docker engine is already running (Docker Desktop, Rancher Desktop, ...) -> install nothing
+    # Irgendeine Docker-Engine laeuft bereits (Docker Desktop, Rancher Desktop, ...) -> nichts installieren
     $engineName = (Invoke-Native 'docker' @('info', '--format', '{{.OperatingSystem}}')).Output.Trim()
-    Write-Ok "A Docker engine is already running ($engineName) - nothing will be installed"
+    Write-Ok "Eine Docker-Engine laeuft bereits ($engineName) - es wird nichts installiert"
     $useExistingEngine = $true
 } elseif (Get-DockerRoot) {
-    Write-Ok "Docker Desktop is already installed ($(Get-DockerRoot))"
+    Write-Ok "Docker Desktop ist bereits installiert ($(Get-DockerRoot))"
 } else {
-    # Detect other container tools that do not get along with Docker Desktop
+    # Andere Container-Programme erkennen, die sich mit Docker Desktop nicht vertragen
     $otherTools = @()
     foreach ($candidate in @(
             @{ Name = 'Rancher Desktop'; Paths = @((Join-Path $env:ProgramFiles 'Rancher Desktop'), (Join-Path $env:LOCALAPPDATA 'Programs\Rancher Desktop')) },
@@ -392,18 +392,18 @@ if (Test-DockerEngine) {
     $otherTools = $otherTools | Select-Object -Unique
     if ($otherTools -and -not $IgnoreOtherEngines) {
         Stop-WithError @"
-$($otherTools -join ' / ') is already installed on this computer.
-Installing Docker Desktop in addition often leads to conflicts.
+Auf diesem Rechner ist bereits $($otherTools -join ' / ') installiert.
+Docker Desktop zusaetzlich zu installieren fuehrt oft zu Konflikten.
 
-Options:
-  a) Start $($otherTools[0]) (for Rancher Desktop choose the engine 'dockerd (moby)')
-     and run this script again - it will then use the running engine.
-  b) Uninstall $($otherTools -join ' / ') and run the script again.
-  c) Install Docker Desktop anyway:  -IgnoreOtherEngines
+Moeglichkeiten:
+  a) $($otherTools[0]) starten (bei Rancher Desktop die Engine 'dockerd (moby)' waehlen)
+     und dieses Skript erneut ausfuehren - es nutzt dann die laufende Engine.
+  b) $($otherTools -join ' / ') deinstallieren und das Skript erneut ausfuehren.
+  c) Docker Desktop trotzdem installieren:  -IgnoreOtherEngines
 "@
     }
 
-    # Docker installed directly inside a WSL distribution (e.g. docker-ce in Ubuntu)?
+    # Docker direkt in einer WSL-Distribution (z. B. docker-ce in Ubuntu)?
     $distroList = Invoke-Native 'wsl.exe' @('--list', '--quiet')
     $distros = @()
     if ($distroList.ExitCode -eq 0) {
@@ -417,68 +417,68 @@ Options:
         if ($check.ExitCode -eq 0 -and $check.Output.Trim()) { $wslDocker += $d }
     }
     if ($wslDocker) {
-        Write-Warn "Docker is installed directly in the WSL distribution $($wslDocker -join ', ')."
-        Write-Warn 'Docker recommends removing it there before installing Docker Desktop,'
-        Write-Warn 'otherwise both may get in each other''s way inside that distribution.'
-        Write-Warn '(Inside the distribution e.g.: sudo apt remove docker-ce docker-ce-cli containerd.io)'
+        Write-Warn "In der WSL-Distribution $($wslDocker -join ', ') ist Docker direkt installiert."
+        Write-Warn 'Docker empfiehlt, es dort vor der Installation von Docker Desktop zu entfernen,'
+        Write-Warn "sonst koennen sich beide in dieser Distribution in die Quere kommen."
+        Write-Warn "(In der Distribution z. B.: sudo apt remove docker-ce docker-ce-cli containerd.io)"
         if (-not $Yes) {
-            $answer = Read-Host '    Continue installing Docker Desktop anyway? (Y/N)'
-            if (-not (Test-YesAnswer $answer)) { exit 0 }
+            $answer = Read-Host '    Trotzdem mit der Installation von Docker Desktop fortfahren? (J/N)'
+            if ($answer -notmatch '^[JjYy]') { exit 0 }
         }
     }
 
     $installer = Join-Path $env:TEMP 'DockerDesktopInstaller.exe'
-    Write-Info "Downloading Docker Desktop ($dockerArch) from docker.com (about 500 MB) ..."
+    Write-Info "Lade Docker Desktop ($dockerArch) von docker.com herunter (ca. 500 MB) ..."
     try {
         Start-BitsTransfer -Source $DockerInstallerUrl -Destination $installer
     } catch {
         Invoke-WebRequest -Uri $DockerInstallerUrl -OutFile $installer -UseBasicParsing
     }
 
-    # Only run the installer if it carries a valid signature from Docker Inc.
+    # Nur ausfuehren, wenn das Installationsprogramm gueltig von Docker Inc. signiert ist
     $sig = Get-AuthenticodeSignature -FilePath $installer
     if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notmatch 'O="?Docker') {
         Remove-Item $installer -ErrorAction SilentlyContinue
-        Stop-WithError "The signature of the Docker installer is invalid ($($sig.Status)). Installation aborted."
+        Stop-WithError "Die Signatur des Docker-Installationsprogramms ist ungueltig ($($sig.Status)). Installation abgebrochen."
     }
-    Write-Ok 'Docker Inc. signature verified'
+    Write-Ok 'Signatur von Docker Inc. geprueft'
 
-    Write-Info 'Installing Docker Desktop (silent, WSL 2 backend, license accepted) ...'
+    Write-Info 'Installiere Docker Desktop (still, WSL-2-Backend, Lizenz akzeptiert) ...'
     $p = Start-Process -FilePath $installer -Wait -PassThru `
          -ArgumentList 'install', '--quiet', '--accept-license', '--backend=wsl-2'
     Remove-Item $installer -ErrorAction SilentlyContinue
-    if ($p.ExitCode -notin 0, 3010) { Stop-WithError "Docker installer exited with code $($p.ExitCode)." }
-    if (-not (Get-DockerRoot)) { Stop-WithError 'Docker Desktop was not found after the installation.' }
-    Write-Ok 'Docker Desktop installed'
+    if ($p.ExitCode -notin 0, 3010) { Stop-WithError "Docker-Installer beendet mit Code $($p.ExitCode)." }
+    if (-not (Get-DockerRoot)) { Stop-WithError 'Docker Desktop wurde nach der Installation nicht gefunden.' }
+    Write-Ok 'Docker Desktop installiert'
 }
 
 if (Get-DockerRoot) {
-    # Add the user to the docker-users group (takes effect at the next sign-in)
+    # Benutzer in die Gruppe docker-users aufnehmen (wirkt ab der naechsten Anmeldung)
     try {
         $member = Get-LocalGroupMember -Group 'docker-users' -ErrorAction Stop |
                   Where-Object { $_.Name -eq $identity.Name }
         if (-not $member) {
             Add-LocalGroupMember -Group 'docker-users' -Member $identity.Name -ErrorAction Stop
-            Write-Ok "$($identity.Name) added to the docker-users group"
+            Write-Ok "$($identity.Name) zur Gruppe docker-users hinzugefuegt"
         }
     } catch { }
 }
 
 Update-SessionPath
 
-# ---------------------------------------------------------------- 4. Start Docker engine
+# ---------------------------------------------------------------- 4. Docker-Engine starten
 
-Write-Step 'Step 4/6: Starting the Docker engine'
+Write-Step 'Schritt 4/6: Docker-Engine starten'
 
 function Wait-DockerEngine([int]$Minutes = 5) {
     $deadline = (Get-Date).AddMinutes($Minutes)
     while (-not (Test-DockerEngine)) {
         if ((Get-Date) -gt $deadline) {
             Stop-WithError @"
-The Docker engine is not ready after $Minutes minutes.
-Open Docker Desktop and check that 'Engine running' is shown at the bottom left.
-If not: quit Docker Desktop, run 'wsl --shutdown', start it again.
-Then run this script again.
+Die Docker-Engine ist nach $Minutes Minuten nicht bereit.
+Docker Desktop oeffnen und pruefen, ob unten links 'Engine running' steht.
+Falls nicht: Docker Desktop beenden, 'wsl --shutdown' ausfuehren, neu starten.
+Danach dieses Skript erneut ausfuehren.
 "@
         }
         Start-Sleep -Seconds 5
@@ -488,53 +488,53 @@ Then run this script again.
 }
 
 if (Test-DockerEngine) {
-    if (-not $useExistingEngine) { Write-Ok 'Docker engine is already running' }
+    if (-not $useExistingEngine) { Write-Ok 'Docker-Engine laeuft bereits' }
 } else {
-    # start via explorer.exe so that Docker Desktop does NOT run with admin rights
+    # ueber explorer.exe starten, damit Docker Desktop NICHT mit Adminrechten laeuft
     $dockerExe = Join-Path (Get-DockerRoot) 'Docker Desktop.exe'
     Start-Process explorer.exe -ArgumentList "`"$dockerExe`""
-    Write-Info 'Waiting for the Docker engine (up to 5 minutes on first start) ...'
-    Write-Info "If Docker Desktop shows 'Welcome to Docker' or a survey: just click 'Skip'."
+    Write-Info 'Warte auf die Docker-Engine (beim ersten Start bis zu 5 Minuten) ...'
+    Write-Info "Zeigt Docker Desktop 'Welcome to Docker' oder eine Umfrage: einfach 'Skip' klicken."
     Wait-DockerEngine
-    Write-Ok 'Docker engine is running'
+    Write-Ok 'Docker-Engine laeuft'
 }
 
-# Odoo and PostgreSQL are Linux images: the engine must run in Linux mode
+# Odoo und PostgreSQL sind Linux-Images: die Engine muss im Linux-Modus laufen
 $osType = (Invoke-Native 'docker' @('info', '--format', '{{.OSType}}')).Output.Trim()
 if ($osType -eq 'windows') {
     $dockerCli = if (Get-DockerRoot) { Join-Path (Get-DockerRoot) 'DockerCli.exe' } else { $null }
-    Write-Warn 'Docker Desktop is running in "Windows containers" mode. Odoo needs Linux containers.'
+    Write-Warn 'Docker Desktop laeuft im Modus "Windows-Container". Odoo braucht Linux-Container.'
     $switch = $false
     if ($dockerCli -and (Test-Path $dockerCli)) {
         if ($Yes) { $switch = $true }
         else {
-            $answer = Read-Host '    Switch to Linux containers now? (Y/N)'
-            $switch = (Test-YesAnswer $answer)
+            $answer = Read-Host '    Jetzt auf Linux-Container umschalten? (J/N)'
+            $switch = ($answer -match '^[JjYy]')
         }
     }
     if (-not $switch) {
-        Stop-WithError "Please switch to Linux containers: right-click the Docker whale in the notification area
--> 'Switch to Linux containers...'. Then run this script again."
+        Stop-WithError "Bitte auf Linux-Container umschalten: Rechtsklick auf den Docker-Wal im Infobereich
+-> 'Switch to Linux containers...'. Danach dieses Skript erneut ausfuehren."
     }
-    Write-Info 'Switching to Linux containers ...'
+    Write-Info 'Schalte auf Linux-Container um ...'
     & $dockerCli -SwitchLinuxEngine
     Start-Sleep -Seconds 10
     Wait-DockerEngine -Minutes 3
     $osType = (Invoke-Native 'docker' @('info', '--format', '{{.OSType}}')).Output.Trim()
-    if ($osType -ne 'linux') { Stop-WithError "Switching failed (mode: $osType). Please switch to Linux containers manually." }
+    if ($osType -ne 'linux') { Stop-WithError "Umschalten fehlgeschlagen (Modus: $osType). Bitte manuell auf Linux-Container umschalten." }
 }
-Write-Ok 'Linux container mode active'
+Write-Ok 'Linux-Container-Modus aktiv'
 
 $composeVersion = Invoke-Native 'docker' @('compose', 'version', '--short')
 if ($composeVersion.ExitCode -ne 0) {
-    Stop-WithError "'docker compose' is not available. Please update Docker Desktop or, for other
-container tools, install the Compose plugin."
+    Stop-WithError "'docker compose' ist nicht verfuegbar. Bitte Docker Desktop aktualisieren bzw. bei anderen
+Container-Programmen das Compose-Plugin installieren."
 }
 Write-Ok "Docker Compose $($composeVersion.Output.Trim())"
 
-# ---------------------------------------------------------------- 5. Project folder
+# ---------------------------------------------------------------- 5. Projektordner
 
-Write-Step "Step 5/6: Creating project folder $InstallDir"
+Write-Step "Schritt 5/6: Projektordner $InstallDir anlegen"
 
 New-Item -ItemType Directory -Force -Path $InstallDir, "$InstallDir\config", "$InstallDir\addons" | Out-Null
 
@@ -543,20 +543,20 @@ $confFile    = Join-Path $InstallDir 'config\odoo.conf'
 $masterPwd   = $null
 
 if ((Test-Path $composeFile) -and -not $Force) {
-    Write-Ok 'compose.yaml already exists and is not overwritten (use -Force to rewrite)'
+    Write-Ok 'compose.yaml existiert bereits, wird nicht ueberschrieben (-Force zum Neuschreiben)'
     $existingCompose = Get-Content $composeFile -Raw
     if (-not $AllowNetworkAccess -and $existingCompose -match '(?m)^\s*-\s*"\d+:8069"') {
-        Write-Warn 'The existing compose.yaml makes Odoo reachable from the whole network.'
-        Write-Warn "Local only: in compose.yaml change the line under 'ports:' to `"127.0.0.1:${Port}:8069`","
-        Write-Warn "then run 'docker compose up -d' in the folder $InstallDir."
+        Write-Warn 'Die bestehende compose.yaml macht Odoo im ganzen Netzwerk erreichbar.'
+        Write-Warn "Nur lokal: in compose.yaml die Zeile unter 'ports:' auf `"127.0.0.1:${Port}:8069`" aendern,"
+        Write-Warn "dann im Ordner $InstallDir 'docker compose up -d' ausfuehren."
     }
 } else {
     $dbPwd = New-RandomPassword
     $compose = @"
-# Generated by install-odoo20.ps1 (version $ScriptVersion)
-# The database password is fixed from the first start. To change it,
-# first delete all data with 'docker compose down -v'.
-# Port binding: 127.0.0.1 = this computer only, 0.0.0.0 = whole network
+# Erzeugt von install-odoo20.ps1 (Version $ScriptVersion)
+# Das Datenbank-Passwort gilt ab dem ersten Start. Wer es aendert,
+# muss vorher mit 'docker compose down -v' alle Daten loeschen.
+# Port-Freigabe: 127.0.0.1 = nur dieser Rechner, 0.0.0.0 = ganzes Netzwerk
 services:
   db:
     image: postgres:$PostgresVersion
@@ -592,23 +592,23 @@ volumes:
   odoo20-db-data:
 "@
     Write-Utf8NoBom $composeFile $compose
-    Write-Ok "compose.yaml written (Odoo reachable via $bindAddress)"
+    Write-Ok "compose.yaml geschrieben (Odoo erreichbar ueber $bindAddress)"
 }
 
 if ((Test-Path $confFile) -and -not $Force) {
-    Write-Ok 'odoo.conf already exists and is not overwritten'
-    # Without this line Odoo 20 listens only on 127.0.0.1 INSIDE the container -> port unreachable
+    Write-Ok 'odoo.conf existiert bereits, wird nicht ueberschrieben'
+    # Odoo 20 lauscht ohne diese Zeile nur auf 127.0.0.1 IM CONTAINER -> Port nicht erreichbar
     $existing = Get-Content $confFile -Raw
     if ($existing -notmatch '(?m)^\s*http_interface\s*=') {
         Write-Utf8NoBom $confFile ($existing.TrimEnd() + "`r`nhttp_interface = 0.0.0.0`r`n")
-        Write-Ok 'http_interface = 0.0.0.0 added to odoo.conf'
+        Write-Ok 'http_interface = 0.0.0.0 in odoo.conf ergaenzt'
         $script:ConfChanged = $true
     }
 } else {
     $masterPwd = New-RandomPassword
-    # http_interface = 0.0.0.0 applies only INSIDE the container and is required,
-    # because Odoo 20 otherwise listens only on 127.0.0.1 there. Who may connect
-    # from outside is controlled by the port binding in compose.yaml.
+    # http_interface = 0.0.0.0 gilt nur INNERHALB des Containers und ist noetig,
+    # weil Odoo 20 dort sonst nur auf 127.0.0.1 lauscht. Wer von aussen zugreifen darf,
+    # regelt die Port-Freigabe in compose.yaml.
     $conf = @"
 [options]
 addons_path = /mnt/extra-addons
@@ -618,28 +618,28 @@ list_db = True
 http_interface = 0.0.0.0
 "@
     Write-Utf8NoBom $confFile $conf
-    Write-Ok 'odoo.conf written (new master password generated)'
+    Write-Ok 'odoo.conf geschrieben (neues Master-Passwort erzeugt)'
 }
 
-# ---------------------------------------------------------------- 6. Start
+# ---------------------------------------------------------------- 6. Starten
 
-Write-Step "Step 6/6: Pulling and starting Odoo $OdooVersion"
+Write-Step "Schritt 6/6: Odoo $OdooVersion laden und starten"
 
 Push-Location $InstallDir
 try {
-    Write-Info 'Pulling images (about 1.2 GB) ...'
+    Write-Info 'Lade Images (ca. 1,2 GB) ...'
     & docker compose pull
     if ($LASTEXITCODE -ne 0) {
         Stop-WithError @"
-The images could not be pulled.
-If Docker reports 'manifest ... not found', odoo:$OdooVersion is not available on Docker Hub.
-Then try again later or test with Odoo 19:
+Die Images konnten nicht geladen werden.
+Meldet Docker 'manifest ... not found', ist odoo:$OdooVersion auf Docker Hub nicht verfuegbar.
+Dann spaeter erneut versuchen oder zum Testen mit Odoo 19 starten:
   powershell -ExecutionPolicy Bypass -File `"$PSCommandPath`" -OdooVersion 19.0 -Force
 "@
     }
     & docker compose up -d
     if ($LASTEXITCODE -ne 0) {
-        Stop-WithError "Start failed. Is port $Port in use? Then run again with -Port 8070 -Force.
+        Stop-WithError "Start fehlgeschlagen. Ist Port $Port belegt? Dann mit -Port 8070 -Force erneut starten.
 Details: cd $InstallDir ; docker compose logs web"
     }
     if ($script:ConfChanged) { & docker compose restart web | Out-Null }
@@ -647,7 +647,7 @@ Details: cd $InstallDir ; docker compose logs web"
     Pop-Location
 }
 
-Write-Info 'Waiting for Odoo to respond ...'
+Write-Info 'Warte, bis Odoo antwortet ...'
 $url = "http://localhost:$Port"
 $ready = $false
 for ($i = 0; $i -lt 60; $i++) {
@@ -661,39 +661,39 @@ for ($i = 0; $i -lt 60; $i++) {
 Write-Host ''
 
 if (-not $ready) {
-    Write-Warn 'Odoo is not responding yet. Last log lines:'
+    Write-Warn 'Odoo antwortet noch nicht. Letzte Log-Zeilen:'
     Push-Location $InstallDir; & docker compose logs --tail 8 web; Pop-Location
-    Write-Warn "More log (stop with Ctrl + C):  cd $InstallDir ; docker compose logs -f web"
-    if ($masterPwd) { Write-Host "    Master password: $masterPwd (also in config\odoo.conf)" -ForegroundColor Yellow }
+    Write-Warn "Mehr Log (beenden mit Strg + C):  cd $InstallDir ; docker compose logs -f web"
+    if ($masterPwd) { Write-Host "    Master-Passwort: $masterPwd (steht auch in config\odoo.conf)" -ForegroundColor Yellow }
     exit 1
 }
 
-# ---------------------------------------------------------------- Summary
+# ---------------------------------------------------------------- Zusammenfassung
 
 Write-Host ''
-Write-Host '  Odoo is running!' -ForegroundColor Green
-Write-Host "  Address:          $url"
+Write-Host '  Odoo laeuft!' -ForegroundColor Green
+Write-Host "  Adresse:          $url"
 if ($AllowNetworkAccess) {
-    Write-Host "  Network access:   ON - other devices reach Odoo via this computer's IP, port $Port" -ForegroundColor Yellow
+    Write-Host "  Netzwerkzugriff:  AKTIV - andere Geraete erreichen Odoo ueber die IP dieses Rechners, Port $Port" -ForegroundColor Yellow
 } else {
-    Write-Host '  Network access:   off - Odoo is only reachable from this computer'
+    Write-Host '  Netzwerkzugriff:  aus - Odoo ist nur auf diesem Rechner erreichbar'
 }
-Write-Host "  Project folder:   $InstallDir"
+Write-Host "  Projektordner:    $InstallDir"
 if ($masterPwd) {
-    Write-Host "  Master password:  $masterPwd" -ForegroundColor Yellow
-    Write-Host '                    (also in config\odoo.conf as admin_passwd)'
+    Write-Host "  Master-Passwort:  $masterPwd" -ForegroundColor Yellow
+    Write-Host '                    (steht auch in config\odoo.conf unter admin_passwd)'
 } else {
-    Write-Host '  Master password:  see config\odoo.conf (admin_passwd)'
+    Write-Host '  Master-Passwort:  siehe config\odoo.conf (admin_passwd)'
 }
 Write-Host ''
-Write-Host '  Note: The log warning "invalid addons directory /mnt/extra-addons" is harmless'
-Write-Host "  as long as $InstallDir\addons is empty."
+Write-Host '  Hinweis: Die Log-Warnung "invalid addons directory /mnt/extra-addons" ist harmlos,'
+Write-Host "  solange $InstallDir\addons leer ist."
 Write-Host ''
-Write-Host '  Next step: create the first database in the browser'
-Write-Host '  (master password, database name, login (no real email needed), password,'
-Write-Host '   language and country).'
+Write-Host '  Naechster Schritt: im Browser die erste Datenbank anlegen'
+Write-Host '  (Master-Passwort, Datenbankname, Login (keine echte E-Mail noetig), Passwort,'
+Write-Host '   Sprache und Land waehlen).'
 Write-Host ''
-Write-Host '  After a reboot, Odoo starts automatically together with Docker Desktop.'
+Write-Host '  Nach einem Neustart des Rechners startet Odoo automatisch mit Docker Desktop.'
 Write-Host ''
 
 Start-Process $url
